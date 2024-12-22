@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  resume_parser:
+    build:
+      context: ./resume_parser
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=resume_db
+      - DB_PORT=5432
+      - DB_NAME=resume_db
+      - DB_USER=admin1
+      - DB_PASSWORD=12345
+    depends_on:
+      - resume_db
+
+  resume_db:
+    image: postgres:13
+    container_name: resume_db
+    restart: always
+    environment:
+      POSTGRES_DB: resume_db
+      POSTGRES_USER: admin1
+      POSTGRES_PASSWORD: 12345
+    ports:
+      - "5432:5432"
+    volumes:
+      - resume_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  resume_data:
