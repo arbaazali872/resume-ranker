@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify
 import os
 import uuid
-from werkzeug.utils import secure_filename
-import PyPDF2
-from docx import Document
 from datetime import datetime
+from utils import allowed_file, extract_text_from_pdf, extract_text_from_docx
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -12,8 +10,8 @@ app = Flask(__name__)
 
 # Configuration
 UPLOAD_FOLDER = './uploads'
-ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -23,94 +21,120 @@ DB_CONFIG = {
     "dbname": "resume_db",
     "user": "admin1",
     "password": "12345",
-    "host": "localhost",
+    "host": "resume_db",
     "port": "5432"
 }
 
-# Database Connection
+# Database connection
 def get_db_connection():
+    """Connect to the PostgreSQL database."""
     return psycopg2.connect(**DB_CONFIG, cursor_factory=RealDictCursor)
 
-# Utility to check file type
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# Function to process and save a job description
+def process_job_description(jd_file, jd_id, upload_folder):
+    """Process the JD file and save it to the database."""
+    if not allowed_file(jd_file.filename):
+        return {"error": "Unsupported JD file type"}
 
-# Extract text from PDF
-def extract_text_from_pdf(file_path):
-    text = ""
-    with open(file_path, 'rb') as pdf_file:
-        reader = PyPDF2.PdfReader(pdf_file)
-        for page in reader.pages:
-            text += page.extract_text()
-    return text
+    jd_filename = os.path.join(upload_folder, jd_file.filename)
+    jd_file.save(jd_filename)
 
-# Extract text from DOCX
-def extract_text_from_docx(file_path):
-    text = ""
-    doc = Document(file_path)
-    for paragraph in doc.paragraphs:
-        text += paragraph.text + '\n'
-    return text
+    # Extract JD text
+    jd_text = (
+        extract_text_from_pdf(jd_filename) if jd_filename.endswith('.pdf')
+        else extract_text_from_docx(jd_filename)
+    )
 
-@app.route('/parse-resumes', methods=['POST'])
-def parse_resumes():
-    if 'files' not in request.files:
-        return jsonify({"error": "No files part in the request"}), 400
+    # Save JD to database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO job_descriptions (id, file_name, text, upload_time)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (jd_id, jd_file.filename, jd_text, datetime.now())
+        )
+        conn.commit()
+        return {"jd_id": jd_id, "file_name": jd_file.filename, "message": "JD processed successfully"}
+    except Exception as e:
+        conn.rollback()
+        return {"error": f"Database error while saving JD: {str(e)}"}
+    finally:
+        cursor.close()
+        conn.close()
+        os.remove(jd_filename)  # Clean up JD file
 
-    files = request.files.getlist('files')
-    if not files:
-        return jsonify({"error": "No files selected for upload"}), 400
-
+# Function to process and save resumes
+def process_resumes(resume_files, jd_id, upload_folder):
+    """Process the resume files and save them to the database."""
     results = []
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+    for resume_file in resume_files:
+        if not allowed_file(resume_file.filename):
+            results.append({"file_name": resume_file.filename, "message": "Unsupported file type"})
+            continue
 
-            # Extract text based on file type
-            if filename.endswith('.pdf'):
-                text = extract_text_from_pdf(file_path)
-            elif filename.endswith('.docx'):
-                text = extract_text_from_docx(file_path)
-            else:
-                return jsonify({"error": f"Unsupported file type: {filename}"}), 400
+        resume_filename = os.path.join(upload_folder, resume_file.filename)
+        resume_file.save(resume_filename)
 
-            # Generate a unique ID
-            file_id = str(uuid.uuid4())
+        # Extract resume text
+        resume_text = (
+            extract_text_from_pdf(resume_filename) if resume_filename.endswith('.pdf')
+            else extract_text_from_docx(resume_filename)
+        )
 
-            # Save to database
-            try:
-                cursor.execute(
-                    """
-                    INSERT INTO resumes (id, file_name, text, upload_time)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (file_id, filename, text, datetime.now())
-                )
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                return jsonify({"error": f"Database error: {str(e)}"}), 500
-
-            # Add result for this file
+        try:
+            cursor.execute(
+                """
+                INSERT INTO resumes (id, file_name, text, upload_time)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (jd_id, resume_file.filename, resume_text, datetime.now())
+            )
+            conn.commit()
             results.append({
-                "id": file_id,
-                "file_name": filename,
-                "upload_time": datetime.now(),
+                "file_name": resume_file.filename,
                 "message": "Processed successfully"
             })
-
-            # Clean up the uploaded file
-            os.remove(file_path)
+        except Exception as e:
+            conn.rollback()
+            results.append({
+                "file_name": resume_file.filename,
+                "message": f"Failed to process: {str(e)}"
+            })
+        finally:
+            os.remove(resume_filename)  # Clean up resume file
 
     cursor.close()
     conn.close()
+    return results
 
-    return jsonify({"processed_files": results}), 200
+@app.route('/upload-jd-resumes', methods=['POST'])
+def upload_jd_resumes():
+    """Handle JD and resume uploads."""
+    if 'jd' not in request.files or 'resumes' not in request.files:
+        return jsonify({"error": "JD or resumes not provided"}), 400
+
+    jd_file = request.files['jd']
+    resume_files = request.files.getlist('resumes')
+
+    # Generate a shared UUID
+    jd_id = str(uuid.uuid4())
+
+    # Process JD
+    jd_result = process_job_description(jd_file, jd_id, app.config['UPLOAD_FOLDER'])
+
+    if jd_result.get("error"):
+        return jsonify(jd_result), 500
+
+    # Process resumes
+    resumes_result = process_resumes(resume_files, jd_id, app.config['UPLOAD_FOLDER'])
+
+    return jsonify({"jd": jd_result, "resumes": resumes_result}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS resumes (
+    id UUID PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    text TEXT NOT NULL,
+    upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS job_descriptions (
+    id UUID PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    text TEXT NOT NULL,
+    upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
