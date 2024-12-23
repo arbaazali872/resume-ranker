@@ -5,6 +5,8 @@ from datetime import datetime
 from utils import allowed_file, extract_text_from_pdf, extract_text_from_docx
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from utils import extract_structured_info
+from extractor import extract_relevant_sections
 
 app = Flask(__name__)
 
@@ -67,6 +69,8 @@ def process_job_description(jd_file, jd_id, upload_folder):
         os.remove(jd_filename)  # Clean up JD file
 
 # Function to process and save resumes
+import uuid
+
 def process_resumes(resume_files, jd_id, upload_folder):
     """Process the resume files and save them to the database."""
     results = []
@@ -75,43 +79,78 @@ def process_resumes(resume_files, jd_id, upload_folder):
 
     for resume_file in resume_files:
         if not allowed_file(resume_file.filename):
+            print(f"Skipping unsupported file: {resume_file.filename}")
             results.append({"file_name": resume_file.filename, "message": "Unsupported file type"})
             continue
 
         resume_filename = os.path.join(upload_folder, resume_file.filename)
+        print(f"Saving file: {resume_filename}")
         resume_file.save(resume_filename)
 
         # Extract resume text
-        resume_text = (
-            extract_text_from_pdf(resume_filename) if resume_filename.endswith('.pdf')
-            else extract_text_from_docx(resume_filename)
-        )
+        if resume_filename.endswith('.pdf'):
+            print(f"Extracting text from PDF: {resume_filename}")
+            resume_text = extract_text_from_pdf(resume_filename)
+        elif resume_filename.endswith('.docx'):
+            print(f"Extracting text from DOCX: {resume_filename}")
+            resume_text = extract_text_from_docx(resume_filename)
+        else:
+            print(f"Unsupported file type encountered during extraction: {resume_filename}")
+            continue
+
+        print(f"Extracted raw text for {resume_file.filename}:\n{resume_text[:500]}")  # Print first 500 characters
+
+        # Extract structured information
+        # structured_info = extract_structured_info(resume_text)
+        structured_info =  extract_relevant_sections(resume_text)
+        print(f"Extracted structured info for {resume_file.filename}: {structured_info}")
+
+        # Generate a unique ID for this resume
+        resume_id = str(uuid.uuid4())
 
         try:
+            print(f"Inserting data into the database for {resume_file.filename}")
             cursor.execute(
                 """
-                INSERT INTO resumes (id, file_name, text, upload_time)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO resumes (id, jd_id, file_name, text, skills, education, work_experience, personal_projects, upload_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (jd_id, resume_file.filename, resume_text, datetime.now())
+                (
+                    resume_id,
+                    jd_id,
+                    resume_file.filename,
+                    resume_text,
+                    structured_info["skills"],
+                    structured_info["education"],
+                    structured_info["work_experience"],
+                    structured_info["personal_projects"],
+                    datetime.now()
+                )
             )
             conn.commit()
+            print(f"Successfully inserted data for {resume_file.filename}")
             results.append({
                 "file_name": resume_file.filename,
+                "structured_info": structured_info,
                 "message": "Processed successfully"
             })
         except Exception as e:
             conn.rollback()
+            print(f"Error inserting data for {resume_file.filename}: {str(e)}")
             results.append({
                 "file_name": resume_file.filename,
                 "message": f"Failed to process: {str(e)}"
             })
         finally:
+            print(f"Cleaning up file: {resume_filename}")
             os.remove(resume_filename)  # Clean up resume file
 
     cursor.close()
     conn.close()
+    print("Completed processing all resumes.")
     return results
+
+
 
 @app.route('/upload-jd-resumes', methods=['POST'])
 def upload_jd_resumes():

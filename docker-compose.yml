@@ -25,8 +25,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - resume_data:/var/lib/postgresql/data
+      - resume_jd_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
-  resume_data:
+  resume_jd_data:
