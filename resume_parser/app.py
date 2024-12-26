@@ -8,6 +8,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import logging
 from jd_parser import extract_jd_sections
+from webhook import send_webhook_notification
+
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -164,12 +166,17 @@ def upload_jd_resumes():
     resume_files = request.files.getlist('resumes')
     jd_id = str(uuid.uuid4())
 
+    # Process the job description
     jd_result = process_job_description(jd_file, jd_id)
     if "error" in jd_result:
         return jsonify(jd_result), 500
 
+    # Trigger webhook notification
+    webhook_response = send_webhook_notification(jd_id, jd_result.get("structured_jd", {}))
+    if "error" in webhook_response:
+        logger.warning(f"Webhook failed for JD {jd_id}: {webhook_response['error']}")
+    # Process the resumes
     resumes_result = process_resumes(resume_files, jd_id)
-    return jsonify({"jd": jd_result, "resumes": resumes_result}), 200
-
+    return jsonify({"jd": jd_result, "resumes": resumes_result, "webhook_response": webhook_response}), 200
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

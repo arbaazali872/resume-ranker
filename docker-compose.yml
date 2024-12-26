@@ -11,6 +11,22 @@ services:
       - DB_NAME=resume_db
       - DB_USER=admin1
       - DB_PASSWORD=12345
+      - RANKER_WEBHOOK_URL=http://resume_ranker:8000/rank-resumes
+    depends_on:
+      - resume_db
+      - resume_ranker
+
+  resume_ranker:
+    build:
+      context: ./resume_ranker
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=resume_db
+      - DB_PORT=5432
+      - DB_NAME=resume_db
+      - DB_USER=admin1
+      - DB_PASSWORD=12345
     depends_on:
       - resume_db
 
