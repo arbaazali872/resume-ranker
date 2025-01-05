@@ -1,0 +1,68 @@
+/* static/css/styles.css */
+
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fa;
+  }
+  
+  .card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-header {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  /* .form-group {
+    margin-bottom: 1.5rem;
+  } */
+    /* Center the file input button and label */
+    /* Center the file input button and label */
+  .form-group.text-center label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .form-group.text-center input[type="file"] {
+    margin: 0 auto;
+    display: block;
+    text-align: center;
+    width: auto; /* Ensure the file input adjusts to its content */
+  }
+
+  /* Add spacing between sections */
+  .form-group {
+    margin-bottom: 20px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    border-radius: 0.25rem;
+    color: white;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary:active {
+    background: linear-gradient(135deg, #004085 0%, #003366 100%);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(1px);
+  }
+
