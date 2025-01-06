@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s]: %(m
 logger = logging.getLogger(__name__)
 
 # Configuration for webhook URL
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://resume_ranker:5001/webhook")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://resume_ranker:8000/rank-resumes")
 
 def send_webhook_notification(jd_id):
     """

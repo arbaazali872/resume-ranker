@@ -159,11 +159,11 @@ def process_resumes(resume_files, jd_id):
 
 @app.route('/upload-jd-resumes', methods=['POST'])
 def upload_jd_resumes():
-    if 'jd' not in request.files or 'resumes' not in request.files:
-        return jsonify({"error": "JD or resumes not provided"}), 400
+    if 'jd' not in request.files:
+        return jsonify({"error": "JD not provided"}), 400
 
+    # Extract the job description file
     jd_file = request.files['jd']
-    resume_files = request.files.getlist('resumes')
     jd_id = str(uuid.uuid4())
 
     # Process the job description
@@ -171,12 +171,43 @@ def upload_jd_resumes():
     if "error" in jd_result:
         return jsonify(jd_result), 500
 
-    # Trigger webhook notification
-    webhook_response = send_webhook_notification(jd_id, jd_result.get("structured_jd", {}))
-    if "error" in webhook_response:
-        logger.warning(f"Webhook failed for JD {jd_id}: {webhook_response['error']}")
+    # Extract resume files
+    resume_files = [
+        file for key, file in request.files.items()
+        if key.startswith('resume_')
+    ]
+
+    if not resume_files:
+        return jsonify({"error": "No resumes provided"}), 400
+
     # Process the resumes
     resumes_result = process_resumes(resume_files, jd_id)
-    return jsonify({"jd": jd_result, "resumes": resumes_result, "webhook_response": webhook_response}), 200
+
+    # Check if all resumes were processed successfully
+    all_resumes_processed = all(
+        "Processed successfully" in result.get("message", "")
+        for result in resumes_result
+    )
+
+    if not all_resumes_processed:
+        logger.warning(f"Not all resumes were processed successfully for JD {jd_id}")
+        return jsonify({
+            "jd": jd_result,
+            "resumes": resumes_result,
+            "message": "Some resumes failed to process. Webhook not triggered."
+        }), 500
+
+    # Trigger webhook notification only after JD and resumes are successfully processed
+    webhook_response = send_webhook_notification(jd_id)
+    if "error" in webhook_response:
+        logger.warning(f"Webhook failed for JD {jd_id}: {webhook_response['error']}")
+
+    return jsonify({
+        "jd": jd_result,
+        "resumes": resumes_result,
+        "webhook_response": webhook_response
+    }), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

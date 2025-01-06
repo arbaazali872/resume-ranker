@@ -147,7 +147,7 @@ def get_rankings(jd_id: str):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT r.resume_id, r.file_name, rk.work_experience_score, rk.skills_score, rk.education_score, rk.universal_score
+                SELECT rk.resume_id, r.file_name, rk.work_experience_score, rk.skills_score, rk.education_score, rk.universal_score
                 FROM resumes r
                 JOIN rankings rk ON r.id = rk.resume_id
                 WHERE rk.jd_id = %s

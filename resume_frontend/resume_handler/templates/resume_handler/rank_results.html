@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Rankings</title>
+    {% load static %}
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Resume Rankings</h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Rank</th>
+                        <th>Resume Name</th>
+                        <th>Universal Score</th>
+                        <th>Work Experience Score</th>
+                        <th>Skills Score</th>
+                        <th>Education Score</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ranking in rankings %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ranking.file_name }}</td>
+                        <td>{{ ranking.universal_score|floatformat:2 }}</td>
+                        <td>{{ ranking.work_experience_score|floatformat:2 }}</td>
+                        <td>{{ ranking.skills_score|floatformat:2 }}</td>
+                        <td>{{ ranking.education_score|floatformat:2 }}</td>
+                        <td>
+                            <a href="/media/{{ ranking.resume_id }}" class="btn btn-sm btn-primary">Download</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No rankings available.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Include Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.6.0/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
