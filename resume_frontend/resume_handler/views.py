@@ -85,10 +85,18 @@ def rank_results(request, jd_id):
             logger.error(f"Failed to fetch rankings for JD ID {jd_id}: {response.status_code}")
             raise Http404("Ranking data not found.")
         
-        # Step 4: Get the ranking data from the response
-        rankings = response.json().get("ranked_resumes", [])
-
-        print("got the rankings from parser: ",rankings )
+        # Step 4: Transform the ranking data for template rendering
+        rankings = [
+            {
+                "resume_id": row["resume_id"],
+                "file_name": row["resume_file_name"],
+                "work_experience_score": row["work_experience_score"],
+                "skills_score": row["skills_score"],
+                "education_score": row["education_score"],
+                "universal_score": row["universal_score"]
+            }
+            for row in response.json()["rankings"]
+        ]
 
         # Step 5: Render the results in the template
         return render(request, 'resume_handler/rank_results.html', {'rankings': rankings})
@@ -96,4 +104,5 @@ def rank_results(request, jd_id):
     except requests.exceptions.RequestException as e:
         logger.error(f"Error during API call to Resume Ranker: {str(e)}")
         raise Http404("Error fetching rankings data.")
+
 

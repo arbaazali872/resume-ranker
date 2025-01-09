@@ -7,6 +7,8 @@ from psycopg2.extras import RealDictCursor
 import logging
 import os
 import uuid
+import traceback
+
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -104,13 +106,14 @@ def rank_resumes(payload: WebhookPayload):
                 # Save ranking in the database
                 cursor.execute(
                     """
-                    INSERT INTO rankings (id, jd_id, resume_id, work_experience_score, skills_score, education_score, universal_score)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO rankings (id, jd_id, resume_id, resume_file_name, work_experience_score, skills_score, education_score, universal_score)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         ranking_id,
                         jd_id,
                         resume["id"],
+                        resume['file_name'],
                         normalized_work_experience,
                         normalized_skills,
                         normalized_education,
@@ -136,6 +139,9 @@ def rank_resumes(payload: WebhookPayload):
 
     except Exception as e:
         logger.error(f"Error ranking resumes for JD {jd_id}: {str(e)}")
+        error_details = traceback.format_exc()
+        logger.error("Full traceback:")
+        logger.error(error_details)
         raise HTTPException(status_code=500, detail="An error occurred while ranking resumes.")
     finally:
         conn.close()
@@ -147,15 +153,15 @@ def get_rankings(jd_id: str):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT rk.resume_id, r.file_name, rk.work_experience_score, rk.skills_score, rk.education_score, rk.universal_score
-                FROM resumes r
-                JOIN rankings rk ON r.id = rk.resume_id
-                WHERE rk.jd_id = %s
-                ORDER BY rk.universal_score DESC
+                SELECT resume_id, resume_file_name, work_experience_score, skills_score, education_score, universal_score
+                FROM rankings
+                WHERE jd_id = %s
+                ORDER BY universal_score DESC
                 """,
                 (jd_id,)
             )
             rankings = cursor.fetchall()
+            print("rankings found in the db:\n",rankings)
             return {"rankings": rankings}
     except Exception as e:
         logger.error(f"Error fetching rankings for JD {jd_id}: {str(e)}")
