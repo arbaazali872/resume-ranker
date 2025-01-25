@@ -7,6 +7,8 @@ WORKDIR /app
 # Copy requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # Install SpaCy model
 # RUN python -m spacy download en_core_web_sm
 # Copy the application code into the container
