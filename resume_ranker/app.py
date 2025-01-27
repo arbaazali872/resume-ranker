@@ -146,29 +146,29 @@ def rank_resumes(payload: WebhookPayload):
     finally:
         conn.close()
 
-@app.get("/get-rankings/{jd_id}")
-def get_rankings(jd_id: str):
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT resume_id, resume_file_name, work_experience_score, skills_score, education_score, universal_score
-                FROM rankings
-                WHERE jd_id = %s
-                ORDER BY universal_score DESC
-                """,
-                (jd_id,)
-            )
-            rankings = cursor.fetchall()
-            print("rankings found in the db:\n",rankings)
-            return {"rankings": rankings}
-    except Exception as e:
-        logger.error(f"Error fetching rankings for JD {jd_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while fetching rankings.")
-    finally:
-        conn.close()
+# @app.get("/get-rankings/{jd_id}")
+# def get_rankings(jd_id: str):
+#     conn = get_db_connection()
+#     try:
+#         with conn.cursor() as cursor:
+#             cursor.execute(
+#                 """
+#                 SELECT resume_id, resume_file_name, work_experience_score, skills_score, education_score, universal_score
+#                 FROM rankings
+#                 WHERE jd_id = %s
+#                 ORDER BY universal_score DESC
+#                 """,
+#                 (jd_id,)
+#             )
+#             rankings = cursor.fetchall()
+#             print("rankings found in the db:\n",rankings)
+#             return {"rankings": rankings}
+#     except Exception as e:
+#         logger.error(f"Error fetching rankings for JD {jd_id}: {str(e)}")
+#         raise HTTPException(status_code=500, detail="An error occurred while fetching rankings.")
+#     finally:
+#         conn.close()
 
-@app.get("/")
-def root():
-    return {"message": "Welcome to the Resume Ranker API!"}
+# @app.get("/")
+# def root():
+#     return {"message": "Welcome to the Resume Ranker API!"}
